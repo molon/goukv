@@ -10,4 +10,4 @@ type ScanOpts struct {
 }
 
 // Scanner a function that performs the scanning/filterig
-type Scanner func([]byte, []byte) bool
+type Scanner func([]byte, []byte) error

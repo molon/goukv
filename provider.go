@@ -18,7 +18,7 @@ type Provider interface {
 	Has([]byte) (bool, error)
 	Delete([]byte) error
 	Batch([]Entry) error
-	Scan(ScanOpts)
+	Scan(ScanOpts) error
 	Close() error
 }
 

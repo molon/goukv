@@ -106,9 +106,9 @@ func (p Provider) Close() error {
 }
 
 // Scan implements goukv.Scan
-func (p Provider) Scan(opts goukv.ScanOpts) {
+func (p Provider) Scan(opts goukv.ScanOpts) error {
 	if opts.Scanner == nil {
-		return
+		return goukv.ErrNoScanner
 	}
 
 	var iter iterator.Iterator
@@ -141,7 +141,7 @@ func (p Provider) Scan(opts goukv.ScanOpts) {
 	defer iter.Release()
 	for next() {
 		if err := iter.Error(); err != nil {
-			break
+			return err
 		}
 
 		if !iter.Valid() {
@@ -165,8 +165,9 @@ func (p Provider) Scan(opts goukv.ScanOpts) {
 			continue
 		}
 
-		if !opts.Scanner(newK, newV) {
-			break
+		if err := opts.Scanner(newK, newV); err != nil {
+			return err
 		}
 	}
+	return nil
 }

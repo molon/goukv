@@ -1,6 +1,7 @@
 package badgerdb
 
 import (
+	"bytes"
 	"errors"
 	"time"
 
@@ -154,9 +155,9 @@ func (p Provider) Close() error {
 }
 
 // Scan implements goukv.Scan
-func (p Provider) Scan(opts goukv.ScanOpts) {
+func (p Provider) Scan(opts goukv.ScanOpts) error {
 	if opts.Scanner == nil {
-		return
+		return goukv.ErrNoScanner
 	}
 
 	txn := p.db.NewTransaction(false)
@@ -178,17 +179,25 @@ func (p Provider) Scan(opts goukv.ScanOpts) {
 		iter.Rewind()
 	}
 
+	checked := false
 	for ; iter.Valid(); iter.Next() {
 		item := iter.Item()
 
 		key := item.KeyCopy(nil)
+		if !checked && opts.Offset != nil && !opts.IncludeOffset && bytes.Compare(key, opts.Offset) == 0 {
+			checked = true
+			continue
+		}
+		checked = true
+
 		val, err := item.ValueCopy(nil)
 		if err != nil {
-			break
+			return err
 		}
 
-		if !opts.Scanner(key, val) {
-			break
+		if err := opts.Scanner(key, val); err != nil {
+			return err
 		}
 	}
+	return nil
 }
