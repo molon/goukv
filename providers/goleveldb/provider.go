@@ -154,6 +154,8 @@ func (p Provider) Scan(opts goukv.ScanOpts) error {
 		}
 	} else if opts.ReverseScan {
 		seek = iter.Last
+	} else {
+		seek = iter.First
 	}
 
 	defer iter.Release()
