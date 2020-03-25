@@ -1,7 +1,10 @@
 package leveldb
 
 import (
+	"bytes"
 	"errors"
+	"os"
+	"path/filepath"
 
 	"github.com/alash3al/goukv"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -22,6 +25,13 @@ func (p Provider) Open(opts map[string]interface{}) (goukv.Provider, error) {
 	path, ok := opts["path"].(string)
 	if !ok {
 		return nil, errors.New("must specify path")
+	}
+
+	dir := filepath.Dir(path)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return nil, err
+		}
 	}
 
 	syncWrites, ok := opts["sync_writes"].(bool)
@@ -113,6 +123,7 @@ func (p Provider) Scan(opts goukv.ScanOpts) error {
 
 	var iter iterator.Iterator
 	var next func() bool
+	var seek func() bool
 
 	if opts.Prefix != nil {
 		iter = p.db.NewIterator(util.BytesPrefix(opts.Prefix), nil)
@@ -127,19 +138,15 @@ func (p Provider) Scan(opts goukv.ScanOpts) error {
 	}
 
 	if opts.Offset != nil {
-		iter.Seek(opts.Offset)
-	}
-
-	if opts.ReverseScan && opts.Offset == nil && opts.Prefix == nil {
-		iter.Last()
-	}
-
-	if opts.Offset != nil && !opts.IncludeOffset {
-		next()
+		seek = func() bool {
+			return iter.Seek(opts.Offset)
+		}
+	} else if opts.ReverseScan {
+		seek = iter.Last
 	}
 
 	defer iter.Release()
-	for next() {
+	for ok := seek(); ok; ok = next() {
 		if err := iter.Error(); err != nil {
 			return err
 		}
@@ -149,9 +156,12 @@ func (p Provider) Scan(opts goukv.ScanOpts) error {
 		}
 
 		_k, _v := iter.Key(), iter.Value()
-
 		if _k == nil {
 			break
+		}
+
+		if opts.Offset != nil && !opts.IncludeOffset && bytes.Equal(_k, opts.Offset) {
+			continue
 		}
 
 		newK := make([]byte, len(_k))
@@ -165,7 +175,10 @@ func (p Provider) Scan(opts goukv.ScanOpts) error {
 			continue
 		}
 
-		if err := opts.Scanner(newK, newV); err != nil {
+		if err := opts.Scanner(newK, decodedValue.Value); err != nil {
+			if err == goukv.ErrScanDone {
+				break
+			}
 			return err
 		}
 	}

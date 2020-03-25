@@ -8,4 +8,5 @@ var (
 	ErrDriverNotFound      = errors.New("the requested driver isn't found")
 	ErrKeyExpired          = errors.New("the specified key is expired")
 	ErrNoScanner           = errors.New("the Scanner is required")
+	ErrScanDone            = errors.New("this scan has ended")
 )

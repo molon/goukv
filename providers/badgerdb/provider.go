@@ -3,6 +3,8 @@ package badgerdb
 import (
 	"bytes"
 	"errors"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/alash3al/goukv"
@@ -21,6 +23,13 @@ func (p Provider) Open(opts map[string]interface{}) (goukv.Provider, error) {
 	path, ok := opts["path"].(string)
 	if !ok {
 		return nil, errors.New("must specify path")
+	}
+
+	dir := filepath.Dir(path)
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return nil, err
+		}
 	}
 
 	syncWrites, ok := opts["sync_writes"].(bool)
@@ -196,6 +205,9 @@ func (p Provider) Scan(opts goukv.ScanOpts) error {
 		}
 
 		if err := opts.Scanner(key, val); err != nil {
+			if err == goukv.ErrScanDone {
+				break
+			}
 			return err
 		}
 	}
