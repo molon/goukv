@@ -2,6 +2,7 @@ package goukv
 
 import (
 	"sync"
+	"time"
 )
 
 // providers a providers for available drivers
@@ -13,11 +14,11 @@ var (
 // Provider an interface describes a storage backend
 type Provider interface {
 	Open(map[string]interface{}) (Provider, error)
-	Put(Entry) error
+	Put(*Entry) error
 	Get([]byte) ([]byte, error)
-	Has([]byte) (bool, error)
+	TTL([]byte) (*time.Time, error)
 	Delete([]byte) error
-	Batch([]Entry) error
+	Batch([]*Entry) error
 	Scan(ScanOpts) error
 	Close() error
 }
