@@ -195,7 +195,15 @@ func (p Provider) Scan(opts goukv.ScanOpts) error {
 	if opts.Offset != nil {
 		iter.Seek(opts.Offset)
 	} else {
-		iter.Rewind()
+		if len(iterOpts.Prefix) > 0 {
+			if iterOpts.Reverse {
+				iter.Seek(append(iterOpts.Prefix, 0xFF)) // badger 很傻逼的设计
+			} else {
+				iter.Seek(iterOpts.Prefix)
+			}
+		} else {
+			iter.Rewind()
+		}
 	}
 
 	checked := false
